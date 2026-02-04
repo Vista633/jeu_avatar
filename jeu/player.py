@@ -8,8 +8,8 @@ class Player:
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.width = 40
-        self.height = 50
+        self.width = 170
+        self.height = 220
         self.speed = 5
         self.direction = Direction.RIGHT
         

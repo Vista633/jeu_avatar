@@ -59,7 +59,7 @@ class Game:
         self.dialogue_timer = 0
     
     def start_game(self):
-        self.player = Player(100, 630)  # Spawn on the bridge
+        self.player = Player(80, 200)  # Spawn au sol
         self.current_kingdom = self.kingdoms[self.current_kingdom_index]
         self.camera_x = 0
         self.camera_y = 0
@@ -79,7 +79,9 @@ class Game:
         
         # Limiter la caméra aux bords du monde
         target_x = max(0, min(target_x, 2000 - SCREEN_WIDTH))
-        target_y = max(0, min(target_y, 1500 - SCREEN_HEIGHT))
+        offset_y = 250
+        target_y = self.player.y - SCREEN_HEIGHT // 2 + self.player.height // 2 - offset_y
+
         
         # Mouvement fluide de la caméra
         self.camera_x += (target_x - self.camera_x) * 0.1

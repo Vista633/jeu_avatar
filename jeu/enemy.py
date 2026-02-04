@@ -23,19 +23,19 @@ class Enemy:
         if enemy_type == "mini":
             self.max_hp = 30
             self.hp = 30
-            self.attack = 8
+            self.attack = 30  # Augmenté de 8 à 30
             self.speed = 2
             self.size = 30
         elif enemy_type == "normal":
             self.max_hp = 50
             self.hp = 50
-            self.attack = 12
+            self.attack = 30  # Augmenté de 12 à 30
             self.speed = 1.5
             self.size = 35
         else:  # boss
             self.max_hp = 100
             self.hp = 100
-            self.attack = 20
+            self.attack = 100  # Augmenté de 20 à 100
             self.speed = 1
             self.size = 50
         

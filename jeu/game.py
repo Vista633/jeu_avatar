@@ -2,6 +2,7 @@ import pygame
 import sys
 import random
 import math
+import cv2
 from constants import *
 from enums import GameState, Element, Direction
 from particles import Particle
@@ -11,19 +12,28 @@ from kingdom import Kingdom
 
 class Game:
     def __init__(self):
-        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
         pygame.display.set_caption("Avatar : L'Équilibre Perdu")
         self.clock = pygame.time.Clock()
         self.state = GameState.MENU
         
-        # Polices - scaled for 1366x768
-        self.title_font = pygame.font.Font(None, 90)
-        self.subtitle_font = pygame.font.Font(None, 55)
-        self.text_font = pygame.font.Font(None, 40)
-        self.small_font = pygame.font.Font(None, 30)
+        # Récupérer la taille réelle de l'écran
+        self.screen_width, self.screen_height = self.screen.get_size()
         
-        # Animation du menu
-        self.menu_animation_offset = 0
+        # Calculer le facteur d'échelle (référence: 1366x768)
+        self.scale_x = self.screen_width / 1366
+        self.scale_y = self.screen_height / 768
+        self.scale = min(self.scale_x, self.scale_y)  # Utiliser le plus petit pour garder les proportions
+        
+        # Polices - adaptées à la taille de l'écran
+        self.title_font = pygame.font.Font(None, int(90 * self.scale))
+        self.subtitle_font = pygame.font.Font(None, int(55 * self.scale))
+        self.text_font = pygame.font.Font(None, int(40 * self.scale))
+        self.small_font = pygame.font.Font(None, int(30 * self.scale))
+        
+        # Animation du menu - Vidéo en arrière-plan
+        self.menu_video = cv2.VideoCapture(r"c:\Users\admin\Documents\jeu\Dragon_incrusté_dans_les_montagnes.mp4")
+        self.menu_video_frame = None
         
         # Jeu
         self.player = None
@@ -34,10 +44,10 @@ class Game:
         
         # Royaumes
         self.kingdoms = [
-            Kingdom("Royaume de l'Eau", Element.EAU, (50, 100, 150), "eau.jpg"),
-            Kingdom("Royaume de la Terre", Element.TERRE, (100, 70, 40), "jungle.jpg"),
-            Kingdom("Royaume de l'Air", Element.AIR, (135, 206, 235), "air.jpg"),
-            Kingdom("Royaume du Feu", Element.FEU, (139, 50, 30), "feu.jpg")
+            Kingdom("Royaume de l'Eau", Element.EAU, (50, 100, 150), "eau.jpg", self.screen_width, self.screen_height),
+            Kingdom("Royaume de la Terre", Element.TERRE, (100, 70, 40), "jungle.jpg", self.screen_width, self.screen_height),
+            Kingdom("Royaume de l'Air", Element.AIR, (135, 206, 235), "air.jpg", self.screen_width, self.screen_height),
+            Kingdom("Royaume du Feu", Element.FEU, (139, 50, 30), "feu.jpg", self.screen_width, self.screen_height)
         ]
         self.current_kingdom_index = 0
         self.current_kingdom = None
@@ -81,46 +91,51 @@ class Game:
             self.particles.append(Particle(x, y, color, velocity))
     
     def draw_menu(self):
-        # Fond animé style jungle
-        self.menu_animation_offset = (self.menu_animation_offset + 1) % 360
+        # Lire et afficher la vidéo en arrière-plan
+        ret, frame = self.menu_video.read()
         
-        # Dégradé de fond
-        for y in range(0, SCREEN_HEIGHT, 5):
-            color_value = int(20 + 40 * math.sin((y + self.menu_animation_offset) / 100))
-            color_r = max(0, min(255, color_value))
-            color_g = max(0, min(255, 50 + color_value))
-            color_b = max(0, min(255, color_value))
-            color = (color_r, color_g, color_b)
-            pygame.draw.rect(self.screen, color, (0, y, SCREEN_WIDTH, 5))
+        # Si la vidéo est terminée, recommencer au début
+        if not ret:
+            self.menu_video.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            ret, frame = self.menu_video.read()
         
-        # Feuilles décoratives animées
-        for i in range(11):
-            offset = math.sin((self.menu_animation_offset + i * 36) / 30) * 25
-            x = 120 + i * 110
-            y = 60 + offset
-            pygame.draw.circle(self.screen, (34, 139, 34), (int(x), int(y)), 35)
-            pygame.draw.circle(self.screen, (50, 180, 50), (int(x), int(y)), 30)
+        if ret:
+            # Convertir le frame OpenCV (BGR) en format Pygame (RGB)
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            
+            # Forcer le redimensionnement à la taille exacte de l'écran
+            # Cela étirera la vidéo mais garantit qu'il n'y aura pas de barres
+            frame = cv2.resize(frame, (self.screen_width, self.screen_height), interpolation=cv2.INTER_LINEAR)
+            
+            # Convertir en surface Pygame
+            frame_surface = pygame.surfarray.make_surface(frame.swapaxes(0, 1))
+            self.screen.blit(frame_surface, (0, 0))
         
         # Titre
         title_text = self.title_font.render("AVATAR", True, (255, 215, 0))
-        title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, 180))
+        title_rect = title_text.get_rect(center=(self.screen_width // 2, int(180 * self.scale)))
         
         # Ombre du titre
         shadow_text = self.title_font.render("AVATAR", True, (139, 69, 19))
-        shadow_rect = shadow_text.get_rect(center=(SCREEN_WIDTH // 2 + 5, 185))
+        shadow_offset = int(5 * self.scale)
+        shadow_rect = shadow_text.get_rect(center=(self.screen_width // 2 + shadow_offset, int(185 * self.scale)))
         self.screen.blit(shadow_text, shadow_rect)
         self.screen.blit(title_text, title_rect)
         
         # Sous-titre
         subtitle_text = self.subtitle_font.render("Héritier des 4 Mondes", True, (255, 250, 205))
-        subtitle_rect = subtitle_text.get_rect(center=(SCREEN_WIDTH // 2, 260))
+        subtitle_rect = subtitle_text.get_rect(center=(self.screen_width // 2, int(260 * self.scale)))
         self.screen.blit(subtitle_text, subtitle_rect)
         
         # Boutons
-        start_button = Button(SCREEN_WIDTH // 2 - 175, 360, 350, 75, 
-                            "Commencer le Jeu", (34, 139, 34), (50, 180, 50))
-        quit_button = Button(SCREEN_WIDTH // 2 - 175, 460, 350, 75,
-                           "Quitter le Jeu", (139, 0, 0), (180, 0, 0))
+        button_width = int(350 * self.scale)
+        button_height = int(75 * self.scale)
+        start_button = Button(self.screen_width // 2 - button_width // 2, int(360 * self.scale), 
+                            button_width, button_height, 
+                            "Commencer le Jeu", (34, 139, 34), (50, 180, 50), self.scale)
+        quit_button = Button(self.screen_width // 2 - button_width // 2, int(460 * self.scale), 
+                           button_width, button_height,
+                           "Quitter le Jeu", (139, 0, 0), (180, 0, 0), self.scale)
         
         mouse_pos = pygame.mouse.get_pos()
         mouse_pressed = pygame.mouse.get_pressed()
@@ -133,7 +148,7 @@ class Game:
         
         # Texte d'ambiance
         ambient_text = self.small_font.render("Le destin d'Aelyra repose entre tes mains...", True, (200, 200, 150))
-        ambient_rect = ambient_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 60))
+        ambient_rect = ambient_text.get_rect(center=(self.screen_width // 2, self.screen_height - int(60 * self.scale)))
         self.screen.blit(ambient_text, ambient_rect)
         
         if start_button.is_clicked(mouse_pos, mouse_pressed):
@@ -177,39 +192,52 @@ class Game:
     
     def draw_hud(self):
         # Panneau HUD semi-transparent
-        hud_surface = pygame.Surface((SCREEN_WIDTH, 110))
+        hud_height = int(110 * self.scale)
+        hud_surface = pygame.Surface((self.screen_width, hud_height))
         hud_surface.set_alpha(180)
         hud_surface.fill((20, 20, 40))
         self.screen.blit(hud_surface, (0, 0))
         
+        # Marges et espacements adaptés
+        margin = int(25 * self.scale)
+        
         # Barre de vie
         hp_text = self.text_font.render(f"HP:", True, WHITE)
-        self.screen.blit(hp_text, (25, 25))
+        self.screen.blit(hp_text, (margin, margin))
         
-        hp_bar_width = 320
-        hp_bar_height = 35
+        hp_bar_x = int(100 * self.scale)
+        hp_bar_width = int(320 * self.scale)
+        hp_bar_height = int(35 * self.scale)
         hp_percentage = self.player.hp / self.player.max_hp
         
-        pygame.draw.rect(self.screen, RED, (100, 25, hp_bar_width, hp_bar_height))
-        pygame.draw.rect(self.screen, GREEN, (100, 25, int(hp_bar_width * hp_percentage), hp_bar_height))
-        pygame.draw.rect(self.screen, WHITE, (100, 25, hp_bar_width, hp_bar_height), 3)
+        pygame.draw.rect(self.screen, RED, (hp_bar_x, margin, hp_bar_width, hp_bar_height))
+        pygame.draw.rect(self.screen, GREEN, (hp_bar_x, margin, int(hp_bar_width * hp_percentage), hp_bar_height))
+        pygame.draw.rect(self.screen, WHITE, (hp_bar_x, margin, hp_bar_width, hp_bar_height), int(3 * self.scale))
         
         hp_value = self.small_font.render(f"{self.player.hp}/{self.player.max_hp}", True, WHITE)
-        self.screen.blit(hp_value, (230, 32))
+        hp_value_x = hp_bar_x + hp_bar_width // 2 - hp_value.get_width() // 2
+        self.screen.blit(hp_value, (hp_value_x, margin + int(7 * self.scale)))
         
         # Royaume actuel
+        kingdom_y = margin + hp_bar_height + int(10 * self.scale)
         kingdom_text = self.small_font.render(f"Royaume: {self.current_kingdom.name}", 
                                              True, YELLOW)
-        self.screen.blit(kingdom_text, (25, 70))
+        self.screen.blit(kingdom_text, (margin, kingdom_y))
         
         # Ennemis restants
+        enemies_x = int(450 * self.scale)
         enemies_text = self.small_font.render(f"Ennemis: {len(self.current_kingdom.enemies)}", 
                                              True, WHITE)
-        self.screen.blit(enemies_text, (450, 70))
+        self.screen.blit(enemies_text, (enemies_x, kingdom_y))
         
         # Éléments débloqués
-        elem_x = 720
-        for elem in [Element.EAU, Element.TERRE, Element.AIR, Element.FEU]:
+        elem_start_x = int(720 * self.scale)
+        elem_radius = int(18 * self.scale)
+        elem_spacing = int(45 * self.scale)
+        elem_y = int(50 * self.scale)
+        
+        for i, elem in enumerate([Element.EAU, Element.TERRE, Element.AIR, Element.FEU]):
+            elem_x = elem_start_x + i * elem_spacing
             if elem in self.player.elements:
                 if elem == Element.EAU:
                     color = BLUE
@@ -219,48 +247,54 @@ class Game:
                     color = LIGHT_BLUE
                 else:
                     color = RED
-                pygame.draw.circle(self.screen, color, (elem_x, 50), 18)
+                pygame.draw.circle(self.screen, color, (elem_x, elem_y), elem_radius)
             else:
-                pygame.draw.circle(self.screen, GRAY, (elem_x, 50), 18)
-            pygame.draw.circle(self.screen, WHITE, (elem_x, 50), 18, 2)
-            elem_x += 45
+                pygame.draw.circle(self.screen, GRAY, (elem_x, elem_y), elem_radius)
+            pygame.draw.circle(self.screen, WHITE, (elem_x, elem_y), elem_radius, int(2 * self.scale))
         
         # Contrôles
         controls = self.small_font.render("ZQSD/Flèches: Bouger | ESPACE: Attaquer | E: Soin", 
                                         True, (200, 200, 200))
-        self.screen.blit(controls, (SCREEN_WIDTH - 650, 70))
+        controls_x = self.screen_width - controls.get_width() - margin
+        self.screen.blit(controls, (controls_x, kingdom_y))
     
     def draw_dialogue(self):
         # Boîte de dialogue en bas
-        dialogue_height = 120
-        dialogue_width = SCREEN_WIDTH - 150
+        dialogue_height = int(120 * self.scale)
+        dialogue_width = self.screen_width - int(150 * self.scale)
+        margin_x = int(75 * self.scale)
+        margin_bottom = int(30 * self.scale)
+        
         dialogue_surface = pygame.Surface((dialogue_width, dialogue_height))
         dialogue_surface.set_alpha(220)
         dialogue_surface.fill((20, 20, 40))
-        self.screen.blit(dialogue_surface, (75, SCREEN_HEIGHT - dialogue_height - 30))
+        self.screen.blit(dialogue_surface, (margin_x, self.screen_height - dialogue_height - margin_bottom))
         
         pygame.draw.rect(self.screen, YELLOW, 
-                       (75, SCREEN_HEIGHT - dialogue_height - 30, dialogue_width, dialogue_height), 3)
+                       (margin_x, self.screen_height - dialogue_height - margin_bottom, 
+                        dialogue_width, dialogue_height), int(3 * self.scale))
         
         # Texte
         lines = []
         words = self.dialogue_text.split()
         current_line = ""
         
+        text_margin = int(80 * self.scale)
         for word in words:
             test_line = current_line + word + " "
-            if self.text_font.size(test_line)[0] < dialogue_width - 80:
+            if self.text_font.size(test_line)[0] < dialogue_width - text_margin:
                 current_line = test_line
             else:
                 lines.append(current_line)
                 current_line = word + " "
         lines.append(current_line)
         
-        y = SCREEN_HEIGHT - dialogue_height - 5
+        line_spacing = int(40 * self.scale)
+        y = self.screen_height - dialogue_height - int(5 * self.scale)
         for line in lines[:3]:
             text_surf = self.text_font.render(line.strip(), True, WHITE)
-            self.screen.blit(text_surf, (100, y))
-            y += 40
+            self.screen.blit(text_surf, (margin_x + int(25 * self.scale), y))
+            y += line_spacing
     
     def update_game(self, keys):
         # Mettre à jour le joueur
@@ -356,8 +390,8 @@ class Game:
         
         # Particules de victoire
         for _ in range(3):
-            x = random.randint(0, SCREEN_WIDTH)
-            y = random.randint(0, SCREEN_HEIGHT)
+            x = random.randint(0, self.screen_width)
+            y = random.randint(0, self.screen_height)
             self.create_particles(x, y, random.choice([YELLOW, (255, 215, 0), (255, 255, 150)]), 5)
         
         for particle in self.particles[:]:
@@ -368,7 +402,7 @@ class Game:
         
         # Titre de victoire
         victory_text = self.title_font.render("VICTOIRE !", True, (255, 215, 0))
-        victory_rect = victory_text.get_rect(center=(SCREEN_WIDTH // 2, 180))
+        victory_rect = victory_text.get_rect(center=(self.screen_width // 2, int(180 * self.scale)))
         self.screen.blit(victory_text, victory_rect)
         
         # Messages
@@ -379,16 +413,20 @@ class Game:
             "Tu es le véritable Avatar !"
         ]
         
-        y = 300
+        y = int(300 * self.scale)
+        message_spacing = int(55 * self.scale)
         for message in messages:
             msg_text = self.text_font.render(message, True, WHITE)
-            msg_rect = msg_text.get_rect(center=(SCREEN_WIDTH // 2, y))
+            msg_rect = msg_text.get_rect(center=(self.screen_width // 2, y))
             self.screen.blit(msg_text, msg_rect)
-            y += 55
+            y += message_spacing
         
         # Bouton retour au menu
-        menu_button = Button(SCREEN_WIDTH // 2 - 175, 540, 350, 75,
-                           "Retour au Menu", (34, 139, 34), (50, 180, 50))
+        button_width = int(350 * self.scale)
+        button_height = int(75 * self.scale)
+        menu_button = Button(self.screen_width // 2 - button_width // 2, int(540 * self.scale), 
+                           button_width, button_height,
+                           "Retour au Menu", (34, 139, 34), (50, 180, 50), self.scale)
         
         mouse_pos = pygame.mouse.get_pos()
         mouse_pressed = pygame.mouse.get_pressed()
@@ -404,19 +442,23 @@ class Game:
         
         # Titre Game Over
         gameover_text = self.title_font.render("GAME OVER", True, RED)
-        gameover_rect = gameover_text.get_rect(center=(SCREEN_WIDTH // 2, 210))
+        gameover_rect = gameover_text.get_rect(center=(self.screen_width // 2, int(210 * self.scale)))
         self.screen.blit(gameover_text, gameover_rect)
         
         # Message
         msg_text = self.text_font.render("Le Néant a triomphé...", True, WHITE)
-        msg_rect = msg_text.get_rect(center=(SCREEN_WIDTH // 2, 320))
+        msg_rect = msg_text.get_rect(center=(self.screen_width // 2, int(320 * self.scale)))
         self.screen.blit(msg_text, msg_rect)
         
         # Boutons
-        retry_button = Button(SCREEN_WIDTH // 2 - 175, 420, 350, 75,
-                            "Réessayer", (139, 0, 0), (180, 0, 0))
-        menu_button = Button(SCREEN_WIDTH // 2 - 175, 520, 350, 75,
-                           "Menu Principal", (100, 100, 100), (150, 150, 150))
+        button_width = int(350 * self.scale)
+        button_height = int(75 * self.scale)
+        retry_button = Button(self.screen_width // 2 - button_width // 2, int(420 * self.scale), 
+                            button_width, button_height,
+                            "Réessayer", (139, 0, 0), (180, 0, 0), self.scale)
+        menu_button = Button(self.screen_width // 2 - button_width // 2, int(520 * self.scale), 
+                           button_width, button_height,
+                           "Menu Principal", (100, 100, 100), (150, 150, 150), self.scale)
         
         mouse_pos = pygame.mouse.get_pos()
         mouse_pressed = pygame.mouse.get_pressed()

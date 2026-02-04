@@ -2,13 +2,13 @@ import pygame
 from constants import WHITE
 
 class Button:
-    def __init__(self, x, y, width, height, text, color, hover_color):
+    def __init__(self, x, y, width, height, text, color, hover_color, scale=1.0):
         self.rect = pygame.Rect(x, y, width, height)
         self.text = text
         self.color = color
         self.hover_color = hover_color
         self.current_color = color
-        self.font = pygame.font.Font(None, 40)
+        self.font = pygame.font.Font(None, int(40 * scale))
     
     def draw(self, screen):
         pygame.draw.rect(screen, self.current_color, self.rect, border_radius=10)

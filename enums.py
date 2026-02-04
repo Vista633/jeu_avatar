@@ -1,11 +1,11 @@
 from enum import Enum
 
 class GameState(Enum):
-    MENU = 1
-    GAME = 2
-    DIALOGUE = 3
-    VICTORY = 4
-    GAME_OVER = 5
+    MENU = "menu"
+    SETTINGS = "settings"
+    GAME = "game"
+    VICTORY = "victory"
+    GAME_OVER = "game_over"
 
 class Element(Enum):
     NONE = 0

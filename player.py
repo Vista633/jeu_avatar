@@ -108,19 +108,32 @@ class Player:
             self.velocity_y = self.jump_power
             self.on_ground = False
     
-    def update(self, keys, obstacles):
+    def update(self, keys, obstacles, keybindings=None):
+        # Utiliser les keybindings par défaut si non fournis
+        if keybindings is None:
+            keybindings = {
+                'move_left': [pygame.K_q, pygame.K_LEFT],
+                'move_right': [pygame.K_d, pygame.K_RIGHT],
+                'jump': [pygame.K_SPACE],
+                'heal': [pygame.K_e]
+            }
+        
         dx = 0
         
         # Horizontal movement only
-        if keys[pygame.K_LEFT] or keys[pygame.K_q]:
+        move_left = any(keys[k] for k in keybindings.get('move_left', []) if k < len(keys))
+        move_right = any(keys[k] for k in keybindings.get('move_right', []) if k < len(keys))
+        
+        if move_left:
             dx = -self.speed
             self.direction = Direction.LEFT
-        elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+        elif move_right:
             dx = self.speed
             self.direction = Direction.RIGHT
         
         # Jump
-        if keys[pygame.K_SPACE]:
+        jump_pressed = any(keys[k] for k in keybindings.get('jump', []) if k < len(keys))
+        if jump_pressed:
             self.jump()
         
         # Move horizontally

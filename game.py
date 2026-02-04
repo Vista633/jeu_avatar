@@ -57,6 +57,19 @@ class Game:
         # Dialogue
         self.dialogue_text = ""
         self.dialogue_timer = 0
+        
+        # Keybindings - Touches configurables
+        self.default_keybindings = {
+            'move_left': [pygame.K_q, pygame.K_LEFT],
+            'move_right': [pygame.K_d, pygame.K_RIGHT],
+            'jump': [pygame.K_SPACE],
+            'heal': [pygame.K_e]
+        }
+        self.keybindings = self.default_keybindings.copy()
+        
+        # Settings menu state
+        self.waiting_for_key = False
+        self.selected_action = None
     
     def start_game(self):
         self.player = Player(80, 200)  # Spawn au sol
@@ -155,7 +168,10 @@ class Game:
         start_button = Button(self.screen_width // 2 - button_width // 2, int(360 * self.scale), 
                             button_width, button_height, 
                             "Commencer le Jeu", (34, 139, 34), (50, 180, 50), self.scale)
-        quit_button = Button(self.screen_width // 2 - button_width // 2, int(460 * self.scale), 
+        settings_button = Button(self.screen_width // 2 - button_width // 2, int(460 * self.scale), 
+                               button_width, button_height,
+                               "Paramètres", (70, 70, 150), (100, 100, 200), self.scale)
+        quit_button = Button(self.screen_width // 2 - button_width // 2, int(560 * self.scale), 
                            button_width, button_height,
                            "Quitter le Jeu", (139, 0, 0), (180, 0, 0), self.scale)
         
@@ -163,9 +179,11 @@ class Game:
         mouse_pressed = pygame.mouse.get_pressed()
         
         start_button.check_hover(mouse_pos)
+        settings_button.check_hover(mouse_pos)
         quit_button.check_hover(mouse_pos)
         
         start_button.draw(self.screen)
+        settings_button.draw(self.screen)
         quit_button.draw(self.screen)
         
         # Texte d'ambiance
@@ -176,9 +194,113 @@ class Game:
         if start_button.is_clicked(mouse_pos, mouse_pressed):
             self.start_game()
         
+        if settings_button.is_clicked(mouse_pos, mouse_pressed):
+            self.state = GameState.SETTINGS
+        
         if quit_button.is_clicked(mouse_pos, mouse_pressed):
             pygame.quit()
             sys.exit()
+    
+    def draw_settings(self):
+        # Fond semi-transparent
+        overlay = pygame.Surface((self.screen_width, self.screen_height))
+        overlay.set_alpha(230)
+        overlay.fill((20, 20, 40))
+        self.screen.blit(overlay, (0, 0))
+        
+        # Titre
+        title_text = self.title_font.render("PARAMÈTRES", True, (255, 215, 0))
+        title_rect = title_text.get_rect(center=(self.screen_width // 2, int(100 * self.scale)))
+        self.screen.blit(title_text, title_rect)
+        
+        # Sous-titre
+        subtitle_text = self.text_font.render("Configuration des touches", True, (200, 200, 200))
+        subtitle_rect = subtitle_text.get_rect(center=(self.screen_width // 2, int(180 * self.scale)))
+        self.screen.blit(subtitle_text, subtitle_rect)
+        
+        # Actions et leurs touches
+        actions = {
+            'move_left': 'Déplacer à gauche',
+            'move_right': 'Déplacer à droite',
+            'jump': 'Sauter',
+            'heal': 'Soin (Eau)'
+        }
+        
+        y_start = int(260 * self.scale)
+        y_spacing = int(80 * self.scale)
+        button_width = int(250 * self.scale)
+        button_height = int(60 * self.scale)
+        
+        mouse_pos = pygame.mouse.get_pos()
+        mouse_pressed = pygame.mouse.get_pressed()
+        
+        # Afficher chaque action avec sa touche
+        for i, (action_key, action_name) in enumerate(actions.items()):
+            y_pos = y_start + i * y_spacing
+            
+            # Nom de l'action
+            action_text = self.text_font.render(action_name + ":", True, WHITE)
+            self.screen.blit(action_text, (int(150 * self.scale), y_pos + int(15 * self.scale)))
+            
+            # Obtenir le nom de la touche
+            keys = self.keybindings.get(action_key, [])
+            if keys:
+                key_name = pygame.key.name(keys[0]).upper()
+                if len(keys) > 1:
+                    key_name += " / " + pygame.key.name(keys[1]).upper()
+            else:
+                key_name = "Non assigné"
+            
+            # Bouton pour changer la touche
+            key_button_x = self.screen_width // 2 + int(50 * self.scale)
+            if self.waiting_for_key and self.selected_action == action_key:
+                key_button = Button(key_button_x, y_pos, button_width, button_height,
+                                  "Appuyez sur une touche...", (100, 100, 0), (130, 130, 0), self.scale)
+            else:
+                key_button = Button(key_button_x, y_pos, button_width, button_height,
+                                  key_name, (50, 50, 100), (80, 80, 150), self.scale)
+            
+            key_button.check_hover(mouse_pos)
+            key_button.draw(self.screen)
+            
+            # Si on clique sur le bouton, on attend une nouvelle touche
+            if key_button.is_clicked(mouse_pos, mouse_pressed) and not self.waiting_for_key:
+                self.waiting_for_key = True
+                self.selected_action = action_key
+        
+        # Boutons en bas
+        button_width_bottom = int(300 * self.scale)
+        button_height_bottom = int(70 * self.scale)
+        
+        reset_button = Button(self.screen_width // 2 - button_width_bottom - int(20 * self.scale), 
+                             self.screen_height - int(150 * self.scale),
+                             button_width_bottom, button_height_bottom,
+                             "Réinitialiser", (100, 50, 0), (150, 80, 0), self.scale)
+        
+        back_button = Button(self.screen_width // 2 + int(20 * self.scale), 
+                            self.screen_height - int(150 * self.scale),
+                            button_width_bottom, button_height_bottom,
+                            "Retour", (0, 100, 0), (0, 150, 0), self.scale)
+        
+        reset_button.check_hover(mouse_pos)
+        back_button.check_hover(mouse_pos)
+        
+        reset_button.draw(self.screen)
+        back_button.draw(self.screen)
+        
+        # Instructions si on attend une touche
+        if self.waiting_for_key:
+            instruction_text = self.small_font.render("Appuyez sur ESC pour annuler", True, YELLOW)
+            instruction_rect = instruction_text.get_rect(center=(self.screen_width // 2, 
+                                                                 self.screen_height - int(50 * self.scale)))
+            self.screen.blit(instruction_text, instruction_rect)
+        
+        # Actions des boutons
+        if reset_button.is_clicked(mouse_pos, mouse_pressed):
+            self.keybindings = {k: v.copy() for k, v in self.default_keybindings.items()}
+        
+        if back_button.is_clicked(mouse_pos, mouse_pressed):
+            self.state = GameState.MENU
     
     def draw_game(self):
         # Fond du royaume - use image if available, otherwise use color
@@ -319,8 +441,8 @@ class Game:
             y += line_spacing
     
     def update_game(self, keys):
-        # Mettre à jour le joueur
-        self.player.update(keys, self.current_kingdom.obstacles)
+        # Mettre à jour le joueur avec les keybindings
+        self.player.update(keys, self.current_kingdom.obstacles, self.keybindings)
         
         # Tir avec clic gauche de la souris
         mouse_pressed = pygame.mouse.get_pressed()
@@ -330,7 +452,8 @@ class Game:
                 self.projectiles.append(projectile)
         
         # Soin
-        if keys[pygame.K_e] and Element.EAU in self.player.elements:
+        heal_pressed = any(keys[k] for k in self.keybindings.get('heal', []) if k < len(keys))
+        if heal_pressed and Element.EAU in self.player.elements:
             if self.player.hp < self.player.max_hp:
                 heal_amount = self.player.heal(30)
                 if heal_amount > 0:
@@ -507,6 +630,19 @@ class Game:
                 if event.type == pygame.QUIT:
                     running = False
                 
+                # Gestion des touches pour les paramètres
+                if self.state == GameState.SETTINGS and self.waiting_for_key:
+                    if event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_ESCAPE:
+                            # Annuler
+                            self.waiting_for_key = False
+                            self.selected_action = None
+                        else:
+                            # Assigner la nouvelle touche
+                            self.keybindings[self.selected_action] = [event.key]
+                            self.waiting_for_key = False
+                            self.selected_action = None
+                
                 # Timer pour passer au royaume suivant
                 if event.type == pygame.USEREVENT + 1:
                     self.current_kingdom = self.kingdoms[self.current_kingdom_index]
@@ -521,6 +657,8 @@ class Game:
             # Dessiner selon l'état
             if self.state == GameState.MENU:
                 self.draw_menu()
+            elif self.state == GameState.SETTINGS:
+                self.draw_settings()
             elif self.state == GameState.GAME:
                 self.update_game(keys_pressed)
                 self.draw_game()

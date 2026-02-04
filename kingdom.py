@@ -13,7 +13,10 @@ class Kingdom:
         self.enemies = []
         self.screen_width = screen_width
         self.screen_height = screen_height
-        self.kingdom_index = kingdom_index  # Pour la difficulté progressive
+        self.kingdom_index = kingdom_index
+        
+        # Largeur du monde = 2 écrans
+        self.world_width = screen_width * 2
         
         # Load background image
         self.bg_image = None
@@ -29,28 +32,25 @@ class Kingdom:
         self.generate_world()
     
     def generate_world(self):
-        # No obstacles in platform mode
         self.obstacles = []
         
-        # Largeur du monde : 2.5x la taille de l'écran pour explorer plus
-        self.world_width = int(self.screen_width * 2.5)
-        
-        # Nombre d'ennemis par royaume (personnalisé)
+        # Nombre d'ennemis par royaume
         enemy_counts = [3, 5, 6, 8]
         enemy_count = enemy_counts[min(self.kingdom_index, 3)]
-        ground_level = 580  # Ajusté pour correspondre au joueur
+        ground_level = 640
         
+        # Répartir les ennemis sur les 2 écrans
         for i in range(enemy_count):
-            # Répartir les ennemis sur toute la largeur du monde (2.5 écrans)
-            x = int(self.screen_width * (0.4 + (i * 0.35)))
+            # Distribution régulière sur la largeur totale (2 écrans)
+            x = int(self.screen_width * 0.5 + (i * (self.world_width - self.screen_width) / max(enemy_count, 1)))
             y = ground_level
             enemy_type = random.choice(["mini", "normal", "normal"])
             enemy = Enemy(x, y, enemy_type, self.element, self.kingdom_index)
             self.enemies.append(enemy)
         
-        # Boss à la fin du monde (2x la largeur de l'écran)
+        # Boss à la fin du monde (près de la fin du 2ème écran)
         if self.element != Element.NONE:
-            boss_x = int(self.screen_width * 2.2)  # Loin à droite
+            boss_x = int(self.world_width - 200)
             boss_y = ground_level
             boss = Enemy(boss_x, boss_y, "boss", self.element, self.kingdom_index)
             self.enemies.append(boss)

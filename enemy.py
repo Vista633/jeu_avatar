@@ -7,7 +7,7 @@ from constants import RED, GREEN, BLACK, BLUE, WHITE
 class Enemy:
     def __init__(self, x, y, enemy_type, element, kingdom_index=0):
         self.x = x
-        self.ground_level = 580  # Ajusté pour être sur le sol
+        self.ground_level = 640 # Ajusté pour être sur le sol
         self.y = self.ground_level
         self.width = 35
         self.height = 40

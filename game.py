@@ -10,6 +10,7 @@ from particles import Particle
 from ui import Button
 from player import Player
 from kingdom import Kingdom
+from projectile import Projectile, SpecialProjectile
 
 class Game:
     def __init__(self):
@@ -70,6 +71,10 @@ class Game:
         # Settings menu state
         self.waiting_for_key = False
         self.selected_action = None
+        
+        # Double-click detection for special attack
+        self.last_click_time = 0
+        self.double_click_threshold = 300  # 300ms max between clicks
     
     def start_game(self):
         self.player = Player(80, 200)  # Spawn au sol
@@ -86,19 +91,16 @@ class Game:
         self.dialogue_timer = 180
     
     def update_camera(self):
-        # Centrer la caméra sur le joueur
-        target_x = self.player.x - SCREEN_WIDTH // 2 + self.player.width // 2
-        target_y = self.player.y - SCREEN_HEIGHT // 2 + self.player.height // 2
+        # Caméra suit le joueur horizontalement avec mouvement fluide
+        target_x = self.player.x - self.screen_width // 3
         
-        # Limiter la caméra aux bords du monde
-        target_x = max(0, min(target_x, 2000 - SCREEN_WIDTH))
-        offset_y = 250
-        target_y = self.player.y - SCREEN_HEIGHT // 2 + self.player.height // 2 - offset_y
-
+        # Limiter la caméra aux bords du monde (2 écrans)
+        world_width = self.current_kingdom.world_width
+        target_x = max(0, min(target_x, world_width - self.screen_width))
         
-        # Mouvement fluide de la caméra
-        self.camera_x += (target_x - self.camera_x) * 0.1
-        self.camera_y += (target_y - self.camera_y) * 0.1
+        # Mouvement fluide vers la cible
+        self.camera_x += (target_x - self.camera_x) * 0.15
+        self.camera_y = 0
     
     def create_particles(self, x, y, color, count=15):
         for _ in range(count):
@@ -303,9 +305,13 @@ class Game:
             self.state = GameState.MENU
     
     def draw_game(self):
-        # Fond du royaume - use image if available, otherwise use color
+        # Fond du royaume - 2 images côte à côte qui défilent
         if self.current_kingdom.bg_image:
-            self.screen.blit(self.current_kingdom.bg_image, (0, 0))
+            bg = self.current_kingdom.bg_image
+            
+            # Dessiner 2 copies du fond côte à côte
+            self.screen.blit(bg, (-self.camera_x, 0))
+            self.screen.blit(bg, (self.screen_width - self.camera_x, 0))
         else:
             self.screen.fill(self.current_kingdom.bg_color)
         
@@ -396,8 +402,48 @@ class Game:
                 pygame.draw.circle(self.screen, GRAY, (elem_x, elem_y), elem_radius)
             pygame.draw.circle(self.screen, WHITE, (elem_x, elem_y), elem_radius, int(2 * self.scale))
         
+        # Barre de cooldown de l'attaque spéciale
+        special_x = int(950 * self.scale)
+        special_y = margin
+        special_bar_width = int(180 * self.scale)
+        special_bar_height = int(30 * self.scale)
+        
+        # Texte "Spécial"
+        special_text = self.small_font.render("Spécial:", True, (255, 200, 50))
+        self.screen.blit(special_text, (special_x, special_y - int(5 * self.scale)))
+        
+        # Position de la barre
+        bar_x = special_x + special_text.get_width() + int(10 * self.scale)
+        
+        # Calculer le pourcentage de recharge
+        if self.player.special_cooldown_max > 0:
+            cooldown_progress = 1 - (self.player.special_cooldown / self.player.special_cooldown_max)
+        else:
+            cooldown_progress = 1
+        
+        # Couleur selon l'état (orange si en recharge, vert si prêt)
+        if self.player.special_cooldown <= 0:
+            bar_color = (50, 255, 50)  # Vert = prêt
+            status_text = "PRÊT!"
+        else:
+            bar_color = (255, 150, 50)  # Orange = en recharge
+            seconds_remaining = self.player.special_cooldown // 60
+            status_text = f"{seconds_remaining}s"
+        
+        # Fond de la barre
+        pygame.draw.rect(self.screen, (60, 60, 60), (bar_x, special_y, special_bar_width, special_bar_height))
+        # Barre de progression
+        pygame.draw.rect(self.screen, bar_color, (bar_x, special_y, int(special_bar_width * cooldown_progress), special_bar_height))
+        # Contour
+        pygame.draw.rect(self.screen, WHITE, (bar_x, special_y, special_bar_width, special_bar_height), 2)
+        
+        # Texte du timer
+        timer_text = self.small_font.render(status_text, True, WHITE)
+        timer_x = bar_x + special_bar_width // 2 - timer_text.get_width() // 2
+        self.screen.blit(timer_text, (timer_x, special_y + int(5 * self.scale)))
+        
         # Contrôles
-        controls = self.small_font.render("ZQSD/Flèches: Bouger | ESPACE: Attaquer | E: Soin", 
+        controls = self.small_font.render("ZQSD: Bouger | Double-clic: Spécial", 
                                         True, (200, 200, 200))
         controls_x = self.screen_width - controls.get_width() - margin
         self.screen.blit(controls, (controls_x, kingdom_y))
@@ -441,8 +487,8 @@ class Game:
             y += line_spacing
     
     def update_game(self, keys):
-        # Mettre à jour le joueur avec les keybindings
-        self.player.update(keys, self.current_kingdom.obstacles, self.keybindings)
+        # Mettre à jour le joueur avec les keybindings et la largeur du monde
+        self.player.update(keys, self.current_kingdom.obstacles, self.keybindings, self.current_kingdom.world_width)
         
         # Tir avec clic gauche de la souris
         mouse_pressed = pygame.mouse.get_pressed()
@@ -450,6 +496,10 @@ class Game:
             projectile = self.player.shoot()
             if projectile:
                 self.projectiles.append(projectile)
+        
+        # Mise à jour du cooldown de l'attaque spéciale
+        if self.player.special_cooldown > 0:
+            self.player.special_cooldown -= 1
         
         # Soin
         heal_pressed = any(keys[k] for k in self.keybindings.get('heal', []) if k < len(keys))
@@ -642,6 +692,29 @@ class Game:
                             self.keybindings[self.selected_action] = [event.key]
                             self.waiting_for_key = False
                             self.selected_action = None
+                
+                # Double-clic pour attaque spéciale
+                if self.state == GameState.GAME and event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1:  # Left click
+                        current_time = pygame.time.get_ticks()
+                        if current_time - self.last_click_time < self.double_click_threshold:
+                            # Double-clic détecté ! Lancer l'attaque spéciale
+                            if self.player.special_cooldown <= 0:
+                                # Créer le projectile spécial
+                                special = SpecialProjectile(
+                                    self.player.x + self.player.width // 2,
+                                    self.player.y + self.player.height // 2,
+                                    self.player.direction,
+                                    list(self.player.elements)[0] if self.player.elements else Element.NONE
+                                )
+                                self.projectiles.append(special)
+                                self.player.special_cooldown = self.player.special_cooldown_max
+                                self.create_particles(
+                                    self.player.x + self.player.width // 2,
+                                    self.player.y + self.player.height // 2,
+                                    (255, 200, 50), 40
+                                )
+                        self.last_click_time = current_time
                 
                 # Timer pour passer au royaume suivant
                 if event.type == pygame.USEREVENT + 1:

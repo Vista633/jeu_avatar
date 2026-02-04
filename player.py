@@ -9,13 +9,13 @@ class Player:
         self.x = x
         self.y = y
         self.width = 170
-        self.height = 220
-        self.speed = 5
+        self.height = 200
+        self.speed = 10
         self.direction = Direction.RIGHT
         
         # Physics
         self.velocity_y = 0
-        self.gravity = 0.8
+        self.gravity = 0.5
         self.jump_power = -15
         self.on_ground = False
         self.ground_level = 550  # Ajusté pour que le personnage soit SUR le sol
@@ -36,6 +36,10 @@ class Player:
         # Combat
         self.attack_cooldown = 0
         self.invincible_frames = 0
+        
+        # Attaque spéciale (cooldown de 10 secondes = 600 frames à 60 FPS)
+        self.special_cooldown = 0
+        self.special_cooldown_max = 600
         
         # Load animation sprites
         self.sprites = {
@@ -77,15 +81,15 @@ class Player:
         elif element == Element.AIR:
             self.speed += 1
     
-    def move(self, dx, obstacles):
+    def move(self, dx, obstacles, world_width=2732):
         # Platform movement - only horizontal
         new_x = self.x + dx
         
-        # Check world bounds
+        # Check world bounds (default: 2 screens of 1366 = 2732)
         if new_x < 0:
             new_x = 0
-        elif new_x + self.width > 2000:
-            new_x = 2000 - self.width
+        elif new_x + self.width > world_width:
+            new_x = world_width - self.width
         
         self.x = new_x
         self.is_moving = dx != 0
@@ -108,7 +112,7 @@ class Player:
             self.velocity_y = self.jump_power
             self.on_ground = False
     
-    def update(self, keys, obstacles, keybindings=None):
+    def update(self, keys, obstacles, keybindings=None, world_width=2732):
         # Utiliser les keybindings par défaut si non fournis
         if keybindings is None:
             keybindings = {
@@ -136,8 +140,8 @@ class Player:
         if jump_pressed:
             self.jump()
         
-        # Move horizontally
-        self.move(dx, obstacles)
+        # Move horizontally with world bounds
+        self.move(dx, obstacles, world_width)
         
         # Apply gravity
         self.apply_gravity()

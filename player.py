@@ -26,6 +26,7 @@ class Player:
         self.attack = 15
         self.defense = 5
         self.elements = {Element.NONE}
+        self.gold = 0  # Pièces d'or
         
         # Animation
         self.animation_frame = 0
@@ -40,6 +41,7 @@ class Player:
         # Attaque spéciale (cooldown de 10 secondes = 600 frames à 60 FPS)
         self.special_cooldown = 0
         self.special_cooldown_max = 600
+        self.special_attack_type = 0  # 0=base, 1=mega, 2=ultra
         
         # Load animation sprites
         self.sprites = {

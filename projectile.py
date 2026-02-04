@@ -113,3 +113,107 @@ class SpecialProjectile:
     
     def is_dead(self):
         return self.lifetime <= 0
+
+
+class MegaProjectile:
+    """Attaque Mega - achetable en boutique (200 gold)"""
+    def __init__(self, x, y, direction, element):
+        self.x = x
+        self.y = y
+        self.direction = direction
+        self.element = element
+        self.damage = 250  # Plus de dégâts
+        self.speed = 8
+        self.size = 55
+        self.lifetime = 180
+        self.pulse_timer = 0
+        self.rotation = 0
+        
+        # Couleurs cyan/électrique
+        self.color = (0, 200, 255)
+        self.glow_color = (100, 255, 255)
+    
+    def update(self):
+        if self.direction == Direction.RIGHT:
+            self.x += self.speed
+        elif self.direction == Direction.LEFT:
+            self.x -= self.speed
+        
+        self.lifetime -= 1
+        self.pulse_timer += 1
+        self.rotation += 10
+    
+    def draw(self, screen, camera_x, camera_y):
+        import math
+        screen_x = int(self.x - camera_x)
+        screen_y = int(self.y - camera_y)
+        
+        pulse = abs(math.sin(self.pulse_timer * 0.15)) * 15
+        current_size = int(self.size + pulse)
+        
+        # Étoile rotative
+        glow_surface = pygame.Surface((current_size * 4, current_size * 4), pygame.SRCALPHA)
+        center = current_size * 2
+        
+        # Dessiner une étoile à 6 branches
+        for i in range(6):
+            angle = math.radians(self.rotation + i * 60)
+            end_x = center + math.cos(angle) * current_size
+            end_y = center + math.sin(angle) * current_size
+            pygame.draw.line(glow_surface, (*self.glow_color, 150), (center, center), (end_x, end_y), 6)
+        
+        screen.blit(glow_surface, (screen_x - center, screen_y - center))
+        
+        # Cercle central
+        pygame.draw.circle(screen, self.color, (screen_x, screen_y), current_size // 2)
+        pygame.draw.circle(screen, (255, 255, 255), (screen_x, screen_y), current_size // 4)
+    
+    def is_dead(self):
+        return self.lifetime <= 0
+
+
+class UltraProjectile:
+    """Attaque Ultra - la plus puissante (500 gold)"""
+    def __init__(self, x, y, direction, element):
+        self.x = x
+        self.y = y
+        self.direction = direction
+        self.element = element
+        self.damage = 500  # Dégâts massifs
+        self.speed = 5
+        self.size = 80
+        self.lifetime = 200
+        self.pulse_timer = 0
+        
+        # Couleurs arc-en-ciel/cosmique
+        self.colors = [(255, 0, 100), (255, 100, 0), (255, 200, 0), (0, 255, 100), (0, 100, 255), (150, 0, 255)]
+    
+    def update(self):
+        if self.direction == Direction.RIGHT:
+            self.x += self.speed
+        elif self.direction == Direction.LEFT:
+            self.x -= self.speed
+        
+        self.lifetime -= 1
+        self.pulse_timer += 1
+    
+    def draw(self, screen, camera_x, camera_y):
+        import math
+        screen_x = int(self.x - camera_x)
+        screen_y = int(self.y - camera_y)
+        
+        pulse = abs(math.sin(self.pulse_timer * 0.1)) * 20
+        current_size = int(self.size + pulse)
+        
+        # Anneaux concentriques multicolores
+        for i, color in enumerate(self.colors):
+            ring_size = current_size - (i * 12)
+            if ring_size > 0:
+                pygame.draw.circle(screen, color, (screen_x, screen_y), ring_size, 8)
+        
+        # Centre blanc brillant qui pulse
+        core_size = int(20 + abs(math.sin(self.pulse_timer * 0.3)) * 10)
+        pygame.draw.circle(screen, (255, 255, 255), (screen_x, screen_y), core_size)
+    
+    def is_dead(self):
+        return self.lifetime <= 0

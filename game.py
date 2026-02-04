@@ -33,7 +33,7 @@ class Game:
         self.small_font = pygame.font.Font(None, int(30 * self.scale))
         
         # Animation du menu - Vidéo en arrière-plan
-        video_path = os.path.join(os.path.dirname(__file__), "_incrusté_dans_les_montagnes.mp4")
+        video_path = os.path.join(os.path.dirname(__file__), "Dragon_incrusté_dans_les_montagnes.mp4")
         self.menu_video = cv2.VideoCapture(video_path)
         self.menu_video_frame = None
         
@@ -107,9 +107,27 @@ class Game:
             # Convertir le frame OpenCV (BGR) en format Pygame (RGB)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             
-            # Forcer le redimensionnement à la taille exacte de l'écran
-            # Cela étirera la vidéo mais garantit qu'il n'y aura pas de barres
-            frame = cv2.resize(frame, (self.screen_width, self.screen_height), interpolation=cv2.INTER_LINEAR)
+            # Obtenir les dimensions de la vidéo
+            video_height, video_width = frame.shape[:2]
+            
+            # Calculer les ratios pour remplir l'écran (mode "cover")
+            scale_width = self.screen_width / video_width
+            scale_height = self.screen_height / video_height
+            scale = max(scale_width, scale_height)  # Utiliser le plus grand pour couvrir tout l'écran
+            
+            # Nouvelles dimensions après scaling
+            new_width = int(video_width * scale)
+            new_height = int(video_height * scale)
+            
+            # Redimensionner la vidéo
+            frame = cv2.resize(frame, (new_width, new_height), interpolation=cv2.INTER_LINEAR)
+            
+            # Calculer les offsets pour centrer et cropper
+            x_offset = (new_width - self.screen_width) // 2
+            y_offset = (new_height - self.screen_height) // 2
+            
+            # Cropper la partie centrale pour qu'elle corresponde exactement à la taille de l'écran
+            frame = frame[y_offset:y_offset + self.screen_height, x_offset:x_offset + self.screen_width]
             
             # Convertir en surface Pygame
             frame_surface = pygame.surfarray.make_surface(frame.swapaxes(0, 1))

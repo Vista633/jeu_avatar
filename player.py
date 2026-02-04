@@ -31,18 +31,35 @@ class Player:
         self.animation_frame = 0
         self.animation_counter = 0
         self.is_moving = False
+        self.animation_state = 'idle'  # idle, walking
         
         # Combat
         self.attack_cooldown = 0
         self.invincible_frames = 0
         
-        # Load and resize sprite
+        # Load animation sprites
+        self.sprites = {
+            'idle': [],
+            'walking': []
+        }
+        
         try:
-            self.sprite = pygame.image.load('player.jpg').convert_alpha()
-            self.sprite = pygame.transform.scale(self.sprite, (self.width, self.height))
-        except:
-            # Fallback if image not found
-            self.sprite = None
+            # Load idle sprite
+            idle_sprite = pygame.image.load('player_idle.png').convert_alpha()
+            idle_sprite = pygame.transform.scale(idle_sprite, (self.width, self.height))
+            self.sprites['idle'].append(idle_sprite)
+            
+            # Load walking sprites
+            for i in range(1, 4):  # 3 walking frames
+                walk_sprite = pygame.image.load(f'player_walk_{i}.png').convert_alpha()
+                walk_sprite = pygame.transform.scale(walk_sprite, (self.width, self.height))
+                self.sprites['walking'].append(walk_sprite)
+            
+            self.sprites_loaded = True
+        except Exception as e:
+            # Fallback if images not found
+            print(f"Error loading sprites: {e}")
+            self.sprites_loaded = False
         
         # Couleurs pour le dessin (fallback)
         self.body_color = (100, 150, 255)
@@ -114,11 +131,13 @@ class Player:
         
         # Animation
         if self.is_moving:
+            self.animation_state = 'walking'
             self.animation_counter += 1
-            if self.animation_counter >= 10:
-                self.animation_frame = (self.animation_frame + 1) % 4
+            if self.animation_counter >= 8:  # Slower animation cycle
+                self.animation_frame = (self.animation_frame + 1) % 3  # 3 walking frames
                 self.animation_counter = 0
         else:
+            self.animation_state = 'idle'
             self.animation_frame = 0
         
         # Cooldowns
@@ -171,12 +190,15 @@ class Player:
         if self.invincible_frames > 0 and self.invincible_frames % 10 < 5:
             return
         
-        # Si le sprite est chargé, l'utiliser
-        if self.sprite:
+        # Si les sprites sont chargés, les utiliser
+        if self.sprites_loaded and len(self.sprites[self.animation_state]) > 0:
+            # Get the current sprite based on animation state and frame
+            current_sprite = self.sprites[self.animation_state][self.animation_frame]
+            
             # Flip sprite based on direction
-            sprite_to_draw = self.sprite
+            sprite_to_draw = current_sprite
             if self.direction == Direction.LEFT:
-                sprite_to_draw = pygame.transform.flip(self.sprite, True, False)
+                sprite_to_draw = pygame.transform.flip(current_sprite, True, False)
             
             screen.blit(sprite_to_draw, (screen_x, screen_y))
             

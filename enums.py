@@ -5,6 +5,7 @@ class GameState(Enum):
     SETTINGS = "settings"
     SHOP = "shop"
     GAME = "game"
+    PAUSED = "paused"
     VICTORY = "victory"
     GAME_OVER = "game_over"
 

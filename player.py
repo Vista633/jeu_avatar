@@ -51,13 +51,13 @@ class Player:
         
         try:
             # Load idle sprite
-            idle_sprite = pygame.image.load('player_idle.png').convert_alpha()
+            idle_sprite = pygame.image.load('Assets/player_idle.png').convert_alpha()
             idle_sprite = pygame.transform.scale(idle_sprite, (self.width, self.height))
             self.sprites['idle'].append(idle_sprite)
             
             # Load walking sprites
             for i in range(1, 4):  # 3 walking frames
-                walk_sprite = pygame.image.load(f'player_walk_{i}.png').convert_alpha()
+                walk_sprite = pygame.image.load(f'Assets/player_walk_{i}.png').convert_alpha()
                 walk_sprite = pygame.transform.scale(walk_sprite, (self.width, self.height))
                 self.sprites['walking'].append(walk_sprite)
             
@@ -83,6 +83,24 @@ class Player:
         elif element == Element.AIR:
             self.speed += 1
     
+    def reset_position_and_health(self, x, y):
+        """Réinitialise la position et la santé du joueur sans perdre l'or et les achats"""
+        self.x = x
+        self.y = y
+        self.velocity_y = 0
+        self.on_ground = False
+        
+        # Restaurer la vie complète
+        self.hp = self.max_hp
+        
+        # Réinitialiser les cooldowns
+        self.attack_cooldown = 0
+        self.invincible_frames = 0
+        self.special_cooldown = 0
+        
+        # L'or, special_attack_type, et elements sont CONSERVÉS
+    
+
     def move(self, dx, obstacles, world_width=2732):
         # Platform movement - only horizontal
         new_x = self.x + dx

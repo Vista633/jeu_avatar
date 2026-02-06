@@ -34,7 +34,7 @@ class Game:
         self.small_font = pygame.font.Font(None, int(30 * self.scale))
         
         # Animation du menu - Vidéo en arrière-plan
-        video_path = os.path.join(os.path.dirname(__file__), "Dragon_incrusté_dans_les_montagnes.mp4")
+        video_path = os.path.join(os.path.dirname(__file__), "Assets", "Dragonmontagne.mp4")
         self.menu_video = cv2.VideoCapture(video_path)
         self.menu_video_frame = None
         
@@ -47,10 +47,10 @@ class Game:
         
         # Royaumes
         self.kingdoms = [
-            Kingdom("Royaume de l'Eau", Element.EAU, (50, 100, 150), "eau.jpg", self.screen_width, self.screen_height, kingdom_index=0),
-            Kingdom("Royaume de la Terre", Element.TERRE, (100, 70, 40), "jungle.jpg", self.screen_width, self.screen_height, kingdom_index=1),
-            Kingdom("Royaume de l'Air", Element.AIR, (135, 206, 235), "air.jpg", self.screen_width, self.screen_height, kingdom_index=2),
-            Kingdom("Royaume du Feu", Element.FEU, (139, 50, 30), "feu.jpg", self.screen_width, self.screen_height, kingdom_index=3)
+            Kingdom("Royaume de l'Eau", Element.EAU, (50, 100, 150), "Assets/background_jungle.png", 'image', self.screen_width, self.screen_height, kingdom_index=0),
+            Kingdom("Royaume de la Terre", Element.TERRE, (100, 70, 40), "Assets/jungle.jpg", 'image', self.screen_width, self.screen_height, kingdom_index=1),
+            Kingdom("Royaume de l'Air", Element.AIR, (135, 206, 235), "Assets/air.jpg", 'image', self.screen_width, self.screen_height, kingdom_index=2),
+            Kingdom("Royaume du Feu", Element.FEU, (139, 50, 30), "Assets/feu.jpg", 'image', self.screen_width, self.screen_height, kingdom_index=3)
         ]
         self.current_kingdom_index = 0
         self.current_kingdom = None
@@ -76,11 +76,40 @@ class Game:
         self.last_click_time = 0
         self.double_click_threshold = 300  # 300ms max between clicks
         
+        # Click cooldown pour éviter les clicks multiples entre frames
+        self.click_cooldown = 0
+        
+        # Volume de la musique (0.0 à 1.0)
+        self.music_volume = 0.5
+        
         # Créer le joueur dès le départ (pour la boutique)
         self.player = Player(80, 200)
+        
+        # Initialiser et lancer la musique de fond
+        try:
+            pygame.mixer.init()
+            pygame.mixer.music.load('Assets/avatar_sound.mp3')
+            pygame.mixer.music.set_volume(self.music_volume)
+            pygame.mixer.music.play(-1)  # -1 = boucle infinie
+        except Exception as e:
+            print(f"Erreur lors du chargement de la musique: {e}")
     
     def start_game(self):
-        self.player = Player(80, 200)  # Spawn au sol
+        # Si c'est la première partie ou si le joueur n'existe pas, créer un nouveau joueur
+        if self.player is None:
+            self.player = Player(80, 200)
+        else:
+            # Réinitialiser seulement la position et la santé, conserver l'or et les achats
+            self.player.reset_position_and_health(80, 200)
+        
+        # Réinitialiser tous les royaumes pour une nouvelle partie
+        for kingdom in self.kingdoms:
+            kingdom.completed = False
+            kingdom.generate_world()  # Régénère les ennemis
+        
+        # Réinitialiser l'index du royaume au début
+        self.current_kingdom_index = 0
+        
         self.current_kingdom = self.kingdoms[self.current_kingdom_index]
         self.camera_x = 0
         self.camera_y = 0
@@ -88,6 +117,7 @@ class Game:
         self.particles = []
         self.state = GameState.GAME
         self.show_dialogue(f"Bienvenue dans le {self.current_kingdom.name}...")
+    
     
     def show_dialogue(self, text):
         self.dialogue_text = text
@@ -201,16 +231,20 @@ class Game:
         ambient_rect = ambient_text.get_rect(center=(self.screen_width // 2, self.screen_height - int(60 * self.scale)))
         self.screen.blit(ambient_text, ambient_rect)
         
-        if start_button.is_clicked(mouse_pos, mouse_pressed):
+        if start_button.is_clicked(mouse_pos, mouse_pressed) and self.click_cooldown == 0:
+            self.click_cooldown = 10
             self.start_game()
         
-        if shop_button.is_clicked(mouse_pos, mouse_pressed):
+        if shop_button.is_clicked(mouse_pos, mouse_pressed) and self.click_cooldown == 0:
+            self.click_cooldown = 10
             self.state = GameState.SHOP
         
-        if settings_button.is_clicked(mouse_pos, mouse_pressed):
+        if settings_button.is_clicked(mouse_pos, mouse_pressed) and self.click_cooldown == 0:
+            self.click_cooldown = 10
             self.state = GameState.SETTINGS
         
-        if quit_button.is_clicked(mouse_pos, mouse_pressed):
+        if quit_button.is_clicked(mouse_pos, mouse_pressed) and self.click_cooldown == 0:
+            self.click_cooldown = 10
             pygame.quit()
             sys.exit()
     
@@ -281,15 +315,18 @@ class Game:
         back_button.draw(self.screen)
         
         # Gestion des clics
-        if mega_button.is_clicked(mouse_pos, mouse_pressed) and not mega_owned and self.player.gold >= 200:
+        if mega_button.is_clicked(mouse_pos, mouse_pressed) and not mega_owned and self.player.gold >= 200 and self.click_cooldown == 0:
+            self.click_cooldown = 10
             self.player.gold -= 200
             self.player.special_attack_type = 1
         
-        if ultra_button.is_clicked(mouse_pos, mouse_pressed) and not ultra_owned and self.player.gold >= 500:
+        if ultra_button.is_clicked(mouse_pos, mouse_pressed) and not ultra_owned and self.player.gold >= 500 and self.click_cooldown == 0:
+            self.click_cooldown = 10
             self.player.gold -= 500
             self.player.special_attack_type = 2
         
-        if back_button.is_clicked(mouse_pos, mouse_pressed):
+        if back_button.is_clicked(mouse_pos, mouse_pressed) and self.click_cooldown == 0:
+            self.click_cooldown = 10
             self.state = GameState.MENU
     
     def draw_settings(self):
@@ -358,18 +395,55 @@ class Game:
             if key_button.is_clicked(mouse_pos, mouse_pressed) and not self.waiting_for_key:
                 self.waiting_for_key = True
                 self.selected_action = action_key
+        # === SECTION VOLUME ===
+        # Positionner le slider de volume entre les touches et les boutons
+        volume_y = y_start + len(actions) * y_spacing + int(10 * self.scale)
         
-        # Boutons en bas
+        # Titre de la section
+        volume_title = self.text_font.render("Volume Musique:", True, WHITE)
+        self.screen.blit(volume_title, (int(150 * self.scale), volume_y))
+        
+        # Barre de volume (slider)
+        slider_x = self.screen_width // 2 + int(50 * self.scale)
+        slider_width = int(250 * self.scale)
+        slider_height = int(20 * self.scale)
+        slider_y = volume_y + int(5 * self.scale)
+        
+        # Fond de la barre
+        pygame.draw.rect(self.screen, (60, 60, 60), (slider_x, slider_y, slider_width, slider_height))
+        pygame.draw.rect(self.screen, (100, 100, 100), (slider_x, slider_y, slider_width, slider_height), 2)
+        
+        # Barre de volume remplie
+        fill_width = int(slider_width * self.music_volume)
+        pygame.draw.rect(self.screen, (50, 200, 50), (slider_x, slider_y, fill_width, slider_height))
+        
+        # Curseur du slider
+        cursor_x = slider_x + fill_width - int(5 * self.scale)
+        pygame.draw.rect(self.screen, (255, 255, 255), (cursor_x, slider_y - int(3 * self.scale), int(10 * self.scale), slider_height + int(6 * self.scale)))
+        
+        # Pourcentage affiché
+        volume_percent = self.small_font.render(f"{int(self.music_volume * 100)}%", True, (200, 200, 200))
+        self.screen.blit(volume_percent, (slider_x + slider_width + int(15 * self.scale), volume_y))
+        
+        # Interaction avec le slider
+        slider_rect = pygame.Rect(slider_x, slider_y - int(5 * self.scale), slider_width, slider_height + int(10 * self.scale))
+        if mouse_pressed[0] and slider_rect.collidepoint(mouse_pos):
+            # Calculer le nouveau volume basé sur la position de la souris
+            new_volume = (mouse_pos[0] - slider_x) / slider_width
+            self.music_volume = max(0.0, min(1.0, new_volume))
+            pygame.mixer.music.set_volume(self.music_volume)
+        
+        # Boutons en bas - positionnés plus bas pour éviter le chevauchement
         button_width_bottom = int(300 * self.scale)
         button_height_bottom = int(70 * self.scale)
         
         reset_button = Button(self.screen_width // 2 - button_width_bottom - int(20 * self.scale), 
-                             self.screen_height - int(150 * self.scale),
+                             self.screen_height - int(100 * self.scale),
                              button_width_bottom, button_height_bottom,
                              "Réinitialiser", (100, 50, 0), (150, 80, 0), self.scale)
         
         back_button = Button(self.screen_width // 2 + int(20 * self.scale), 
-                            self.screen_height - int(150 * self.scale),
+                            self.screen_height - int(100 * self.scale),
                             button_width_bottom, button_height_bottom,
                             "Retour", (0, 100, 0), (0, 150, 0), self.scale)
         
@@ -387,18 +461,34 @@ class Game:
             self.screen.blit(instruction_text, instruction_rect)
         
         # Actions des boutons
-        if reset_button.is_clicked(mouse_pos, mouse_pressed):
+        if reset_button.is_clicked(mouse_pos, mouse_pressed) and self.click_cooldown == 0:
+            self.click_cooldown = 10
             self.keybindings = {k: v.copy() for k, v in self.default_keybindings.items()}
+            # Réinitialiser aussi le volume
+            self.music_volume = 0.5
+            pygame.mixer.music.set_volume(self.music_volume)
         
-        if back_button.is_clicked(mouse_pos, mouse_pressed):
+        if back_button.is_clicked(mouse_pos, mouse_pressed) and self.click_cooldown == 0:
+            self.click_cooldown = 10
             self.state = GameState.MENU
     
     def draw_game(self):
-        # Fond du royaume - 2 images côte à côte qui défilent
-        if self.current_kingdom.bg_image:
-            bg = self.current_kingdom.bg_image
+        # Fond du royaume - supporter images ET vidéos
+        if self.current_kingdom.bg_type == 'video':
+            # Obtenir le frame vidéo depuis le cache (optimisé)
+            video_surface = self.current_kingdom.get_video_frame()
             
-            # Dessiner 2 copies du fond côte à côte
+            if video_surface:
+                # Dessiner 2 fois le frame pour le scrolling horizontal
+                self.screen.blit(video_surface, (-self.camera_x, 0))
+                self.screen.blit(video_surface, (self.screen_width - self.camera_x, 0))
+            else:
+                # Fallback: couleur unie
+                self.screen.fill(self.current_kingdom.bg_color)
+        
+        elif self.current_kingdom.bg_image:
+            # Code existant pour les images
+            bg = self.current_kingdom.bg_image
             self.screen.blit(bg, (-self.camera_x, 0))
             self.screen.blit(bg, (self.screen_width - self.camera_x, 0))
         else:
@@ -721,8 +811,11 @@ class Game:
         menu_button.check_hover(mouse_pos)
         menu_button.draw(self.screen)
         
-        if menu_button.is_clicked(mouse_pos, mouse_pressed):
-            self.__init__()
+        if menu_button.is_clicked(mouse_pos, mouse_pressed) and self.click_cooldown == 0:
+            # Retour au menu sans perdre l'or et les achats
+            self.click_cooldown = 15  # Cooldown plus long pour transitions d'état
+            self.current_kingdom_index = 0
+            self.state = GameState.MENU
     
     def draw_game_over(self):
         self.screen.fill((20, 0, 0))
@@ -756,12 +849,61 @@ class Game:
         retry_button.draw(self.screen)
         menu_button.draw(self.screen)
         
-        if retry_button.is_clicked(mouse_pos, mouse_pressed):
-            self.__init__()
+        if retry_button.is_clicked(mouse_pos, mouse_pressed) and self.click_cooldown == 0:
+            # Recommencer le jeu actuel sans perdre l'or
+            self.click_cooldown = 15
+            self.current_kingdom_index = 0
             self.start_game()
         
-        if menu_button.is_clicked(mouse_pos, mouse_pressed):
-            self.__init__()
+        if menu_button.is_clicked(mouse_pos, mouse_pressed) and self.click_cooldown == 0:
+            # Retour au menu sans perdre l'or et les achats
+            self.click_cooldown = 15  # Cooldown plus long pour transitions d'état
+            self.current_kingdom_index = 0
+            self.state = GameState.MENU
+    
+    def draw_pause(self):
+        """Affiche le menu de pause par-dessus le jeu"""
+        # Overlay semi-transparent
+        overlay = pygame.Surface((self.screen_width, self.screen_height))
+        overlay.set_alpha(180)  # Transparence
+        overlay.fill((0, 0, 0))  # Noir
+        self.screen.blit(overlay, (0, 0))
+        
+        # Titre "PAUSE"
+        pause_text = self.title_font.render("PAUSE", True, (255, 255, 255))
+        pause_rect = pause_text.get_rect(center=(self.screen_width // 2, int(200 * self.scale)))
+        self.screen.blit(pause_text, pause_rect)
+        
+        # Boutons
+        button_width = int(400 * self.scale)
+        button_height = int(80 * self.scale)
+        
+        resume_button = Button(self.screen_width // 2 - button_width // 2, int(350 * self.scale),
+                              button_width, button_height,
+                              "Reprendre la Partie", (34, 139, 34), (50, 180, 50), self.scale)
+        
+        menu_button = Button(self.screen_width // 2 - button_width // 2, int(450 * self.scale),
+                            button_width, button_height,
+                            "Menu Principal", (139, 0, 0), (180, 0, 0), self.scale)
+        
+        mouse_pos = pygame.mouse.get_pos()
+        mouse_pressed = pygame.mouse.get_pressed()
+        
+        resume_button.check_hover(mouse_pos)
+        menu_button.check_hover(mouse_pos)
+        
+        resume_button.draw(self.screen)
+        menu_button.draw(self.screen)
+        
+        # Gestion des clics
+        if resume_button.is_clicked(mouse_pos, mouse_pressed) and self.click_cooldown == 0:
+            self.click_cooldown = 10
+            self.state = GameState.GAME
+        
+        if menu_button.is_clicked(mouse_pos, mouse_pressed) and self.click_cooldown == 0:
+            self.click_cooldown = 15
+            self.current_kingdom_index = 0
+            self.state = GameState.MENU
     
     def run(self):
         running = True
@@ -771,6 +913,13 @@ class Game:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
+                
+                # Détection touche Échap pour pause (uniquement en jeu)
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    if self.state == GameState.GAME:
+                        self.state = GameState.PAUSED
+                    elif self.state == GameState.PAUSED:
+                        self.state = GameState.GAME
                 
                 # Gestion des touches pour les paramètres
                 if self.state == GameState.SETTINGS and self.waiting_for_key:
@@ -823,6 +972,10 @@ class Game:
             # Mettre à jour les touches
             keys_pressed = pygame.key.get_pressed()
             
+            # Décrémenter le cooldown de clic
+            if self.click_cooldown > 0:
+                self.click_cooldown -= 1
+            
             # Dessiner selon l'état
             if self.state == GameState.MENU:
                 self.draw_menu()
@@ -833,6 +986,9 @@ class Game:
             elif self.state == GameState.GAME:
                 self.update_game(keys_pressed)
                 self.draw_game()
+            elif self.state == GameState.PAUSED:
+                self.draw_game()  # Afficher le jeu en arrière-plan
+                self.draw_pause()  # Overlay du menu pause
             elif self.state == GameState.VICTORY:
                 self.draw_victory()
             elif self.state == GameState.GAME_OVER:

@@ -25,16 +25,16 @@ class Game:
         # Calculer le facteur d'échelle (référence: 1366x768)
         self.scale_x = self.screen_width / 1366
         self.scale_y = self.screen_height / 768
-        self.scale = min(self.scale_x, self.scale_y)  # Utiliser le plus petit pour garder les proportions
+        self.scale = min(self.scale_x, self.scale_y)  
         
-        # Polices - adaptées à la taille de l'écran
+        # Polices
         self.title_font = pygame.font.Font(None, int(90 * self.scale))
         self.subtitle_font = pygame.font.Font(None, int(55 * self.scale))
         self.text_font = pygame.font.Font(None, int(40 * self.scale))
         self.small_font = pygame.font.Font(None, int(30 * self.scale))
         
         # Animation du menu - Vidéo en arrière-plan
-        video_path = os.path.join(os.path.dirname(__file__), "Assets", "Dragonmontagne.mp4")
+        video_path = os.path.join(os.path.dirname(__file__), "Dragon_incrusté_dans_les_montagnes.mp4")
         self.menu_video = cv2.VideoCapture(video_path)
         self.menu_video_frame = None
         
@@ -47,8 +47,8 @@ class Game:
         
         # Royaumes
         self.kingdoms = [
-            Kingdom("Royaume de l'Eau", Element.EAU, (50, 100, 150), "Assets/background_jungle.png", 'image', self.screen_width, self.screen_height, kingdom_index=0),
-            Kingdom("Royaume de la Terre", Element.TERRE, (100, 70, 40), "Assets/jungle.jpg", 'image', self.screen_width, self.screen_height, kingdom_index=1),
+            Kingdom("Royaume de l'Eau", Element.EAU, (50, 100, 150), "eau.jpg", 'image', self.screen_width, self.screen_height, kingdom_index=0),
+            Kingdom("Royaume de la Terre", Element.TERRE, (100, 70, 40), "Assets/background_jungle.png", 'image', self.screen_width, self.screen_height, kingdom_index=1),
             Kingdom("Royaume de l'Air", Element.AIR, (135, 206, 235), "Assets/air.jpg", 'image', self.screen_width, self.screen_height, kingdom_index=2),
             Kingdom("Royaume du Feu", Element.FEU, (139, 50, 30), "Assets/feu.jpg", 'image', self.screen_width, self.screen_height, kingdom_index=3)
         ]

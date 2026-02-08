@@ -10,7 +10,6 @@ class Kingdom:
         self.element = element
         self.bg_color = bg_color
         self.completed = False
-        self.obstacles = []
         self.enemies = []
         self.screen_width = screen_width
         self.screen_height = screen_height
@@ -21,7 +20,6 @@ class Kingdom:
         
         # Type de fond: 'image' ou 'video'
         self.bg_type = bg_type
-        self.bg_video = None
         self.bg_image = None
         self.bg_video_frames = []  # Cache de frames pour performance
         self.bg_video_frame_index = 0  # Index du frame actuel
@@ -36,7 +34,6 @@ class Kingdom:
                     
                     if not video.isOpened():
                         print(f"Warning: Could not load background video {bg_path}")
-                        self.bg_video = None
                     else:
                         # Pré-charger TOUS les frames pour performance optimale
                         frame_count = 0
@@ -76,7 +73,6 @@ class Kingdom:
                         
                 except Exception as e:
                     print(f"Error loading video {bg_path}: {e}")
-                    self.bg_video = None
             else:  # image
                 try:
                     self.bg_image = pygame.image.load(bg_path).convert()
@@ -102,7 +98,6 @@ class Kingdom:
         return surface
 
     def generate_world(self):
-        self.obstacles = []
         self.enemies = []
         
         # Nombre d'ennemis par royaume (5, 7, 8, 9) -> Max 10 avec le boss

@@ -10,7 +10,7 @@ from particles import Particle
 from ui import Button
 from player import Player
 from kingdom import Kingdom
-from projectile import Projectile, SpecialProjectile, MegaProjectile, UltraProjectile
+from projectile import SpecialProjectile, MegaProjectile, UltraProjectile
 
 class Game:
     def __init__(self):
@@ -34,9 +34,8 @@ class Game:
         self.small_font = pygame.font.Font(None, int(30 * self.scale))
         
         # Animation du menu - Vidéo en arrière-plan
-        video_path = os.path.join(os.path.dirname(__file__), "Dragon_incrusté_dans_les_montagnes.mp4")
+        video_path = os.path.join(os.path.dirname(__file__), "Assets/Dragon_incrusté_dans_les_montagnes.mp4")
         self.menu_video = cv2.VideoCapture(video_path)
-        self.menu_video_frame = None
         
         # Jeu
         self.player = None
@@ -47,7 +46,7 @@ class Game:
         
         # Royaumes
         self.kingdoms = [
-            Kingdom("Royaume de l'Eau", Element.EAU, (50, 100, 150), "eau.jpg", 'image', self.screen_width, self.screen_height, kingdom_index=0),
+            Kingdom("Royaume de l'Eau", Element.EAU, (50, 100, 150), "Assets/eau.jpg", 'image', self.screen_width, self.screen_height, kingdom_index=0),
             Kingdom("Royaume de la Terre", Element.TERRE, (100, 70, 40), "Assets/background_jungle.png", 'image', self.screen_width, self.screen_height, kingdom_index=1),
             Kingdom("Royaume de l'Air", Element.AIR, (135, 206, 235), "Assets/air.jpg", 'image', self.screen_width, self.screen_height, kingdom_index=2),
             Kingdom("Royaume du Feu", Element.FEU, (139, 50, 30), "Assets/feu.jpg", 'image', self.screen_width, self.screen_height, kingdom_index=3)
@@ -493,9 +492,7 @@ class Game:
             self.screen.blit(bg, (self.screen_width - self.camera_x, 0))
         else:
             self.screen.fill(self.current_kingdom.bg_color)
-        
-        # No grid or obstacles in platform mode
-        
+                
         # Dessiner les ennemis
         for enemy in self.current_kingdom.enemies:
             enemy.draw(self.screen, self.camera_x, self.camera_y)
@@ -662,7 +659,7 @@ class Game:
     
     def update_game(self, keys):
         # Mettre à jour le joueur avec les keybindings et la largeur du monde
-        self.player.update(keys, self.current_kingdom.obstacles, self.keybindings, self.current_kingdom.world_width)
+        self.player.update(keys, self.keybindings, self.current_kingdom.world_width)
         
         # Tir avec clic gauche de la souris
         mouse_pressed = pygame.mouse.get_pressed()
@@ -688,7 +685,7 @@ class Game:
         
         # Mettre à jour les ennemis
         for enemy in self.current_kingdom.enemies[:]:
-            enemy.update(self.player.x, self.player.y, self.current_kingdom.obstacles)
+            enemy.update(self.player.x, self.player.y)
             
             # Collision avec le joueur
             player_rect = pygame.Rect(self.player.x, self.player.y, 
@@ -907,7 +904,6 @@ class Game:
     
     def run(self):
         running = True
-        keys_pressed = pygame.key.get_pressed()
         
         while running:
             for event in pygame.event.get():

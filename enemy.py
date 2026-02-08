@@ -1,8 +1,7 @@
 import random
 import pygame
-import math
 from enums import Element
-from constants import RED, GREEN, BLACK, BLUE, WHITE
+from constants import RED, GREEN, BLACK
 
 class Enemy:
     def __init__(self, x, y, enemy_type, element, kingdom_index=0, world_width=2732):
@@ -75,13 +74,12 @@ class Enemy:
         except:
             self.has_sprite = False
         
-        # IA
         self.direction = random.choice([0, 1])  # 0=left, 1=right
         self.move_timer = 0
         self.attack_cooldown = 0
         self.aggro_range = 300
     
-    def update(self, player_x, player_y, obstacles):
+    def update(self, player_x, player_y):
         # Apply gravity
         if not self.on_ground:
             self.velocity_y += self.gravity

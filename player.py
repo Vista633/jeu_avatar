@@ -1,7 +1,7 @@
 import pygame
 import math
 from enums import Direction, Element
-from constants import BLACK, BLUE, WHITE, RED, BROWN, LIGHT_BLUE, GRAY
+from constants import BLACK, BLUE
 from projectile import Projectile
 
 class Player:
@@ -101,7 +101,7 @@ class Player:
         # L'or, special_attack_type, et elements sont CONSERVÉS
     
 
-    def move(self, dx, obstacles, world_width=2732):
+    def move(self, dx, world_width=2732):
         # Platform movement - only horizontal
         new_x = self.x + dx
         
@@ -132,7 +132,7 @@ class Player:
             self.velocity_y = self.jump_power
             self.on_ground = False
     
-    def update(self, keys, obstacles, keybindings=None, world_width=2732):
+    def update(self, keys, keybindings=None, world_width=2732):
         # Utiliser les keybindings par défaut si non fournis
         if keybindings is None:
             keybindings = {
@@ -161,7 +161,7 @@ class Player:
             self.jump()
         
         # Move horizontally with world bounds
-        self.move(dx, obstacles, world_width)
+        self.move(dx, world_width)
         
         # Apply gravity
         self.apply_gravity()
@@ -216,7 +216,6 @@ class Player:
     def heal(self, amount):
         old_hp = self.hp
         self.hp = min(self.max_hp, self.hp + amount)
-        self.hp = min(self.hp, self.max_hp) # Double verification unnecessary but safe
         return self.hp - old_hp
     
     def draw(self, screen, camera_x, camera_y):
